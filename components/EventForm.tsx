@@ -2,13 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import type { Category, EventRow, Recurrence } from "@/lib/supabase";
+import { Trash2 } from "lucide-react";
+import type { Category, EventRecord, Recurrence } from "@/lib/types";
+import { addEvent, deleteEvent, updateEvent } from "@/lib/store";
 
 type Props =
   | { mode: "create"; categories: Category[]; event?: undefined }
-  | { mode: "edit"; categories: Category[]; event: EventRow };
+  | { mode: "edit"; categories: Category[]; event: EventRecord };
 
-const REMINDER_PRESETS = [
+const REMINDER_PRESETS: { label: string; days: number[] }[] = [
   { label: "On the day", days: [0] },
   { label: "1 day before", days: [1] },
   { label: "1 week + 1 day before", days: [7, 1] },
@@ -22,84 +24,64 @@ function remindersToKey(days: number[]): string {
 export function EventForm({ categories, mode, event }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(event?.title ?? "");
-  const [categoryId, setCategoryId] = useState<string>(
-    event?.category_id ?? "",
-  );
+  const [categoryId, setCategoryId] = useState<string>(event?.categoryId ?? "");
   const [startDate, setStartDate] = useState(
-    event?.start_date ?? new Date().toISOString().slice(0, 10),
+    event?.startDate ?? new Date().toISOString().slice(0, 10),
   );
   const [recurrence, setRecurrence] = useState<Recurrence>(
     event?.recurrence ?? "yearly",
   );
   const [reminderKey, setReminderKey] = useState(
-    remindersToKey(event?.reminder_days_before ?? [7, 1]),
+    remindersToKey(event?.reminderDaysBefore ?? [7, 1]),
   );
   const [notes, setNotes] = useState(event?.notes ?? "");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function onSubmit(e: FormEvent) {
+  function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    const body = {
+    const payload = {
       title: title.trim(),
-      category_id: categoryId || null,
-      start_date: startDate,
+      categoryId: categoryId || null,
+      startDate,
       recurrence,
-      reminder_days_before: reminderKey
+      reminderDaysBefore: reminderKey
         .split(",")
         .map((n) => Number(n))
         .filter((n) => Number.isFinite(n)),
       notes: notes.trim() || null,
     };
-    const res = await fetch(
-      mode === "create" ? "/api/events" : `/api/events/${event.id}`,
-      {
-        method: mode === "create" ? "POST" : "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      },
-    );
-    setSubmitting(false);
-    if (!res.ok) {
-      const text = await res.text();
-      setError(text || "Save failed");
-      return;
+    if (mode === "create") {
+      addEvent(payload);
+    } else {
+      updateEvent(event.id, payload);
     }
     router.push("/");
-    router.refresh();
   }
 
-  async function onDelete() {
+  function onDelete() {
     if (mode !== "edit") return;
     if (!confirm("Delete this event?")) return;
-    setSubmitting(true);
-    const res = await fetch(`/api/events/${event.id}`, { method: "DELETE" });
-    setSubmitting(false);
-    if (res.ok) {
-      router.push("/");
-      router.refresh();
-    }
+    deleteEvent(event.id);
+    router.push("/");
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <label className="block">
-        <span className="text-xs text-muted">Title</span>
+      <label className="block space-y-1.5">
+        <span className="label">Title</span>
         <input
-          className="input mt-1"
+          className="input"
           required
+          autoFocus={mode === "create"}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Car insurance renewal"
+          placeholder="Car insurance renewal"
         />
       </label>
 
-      <label className="block">
-        <span className="text-xs text-muted">Category</span>
+      <label className="block space-y-1.5">
+        <span className="label">Category</span>
         <select
-          className="input mt-1"
+          className="input"
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
         >
@@ -112,21 +94,21 @@ export function EventForm({ categories, mode, event }: Props) {
         </select>
       </label>
 
-      <label className="block">
-        <span className="text-xs text-muted">Date</span>
+      <label className="block space-y-1.5">
+        <span className="label">Date</span>
         <input
           type="date"
-          className="input mt-1"
+          className="input"
           required
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
         />
       </label>
 
-      <label className="block">
-        <span className="text-xs text-muted">Repeats</span>
+      <label className="block space-y-1.5">
+        <span className="label">Repeats</span>
         <select
-          className="input mt-1"
+          className="input"
           value={recurrence}
           onChange={(e) => setRecurrence(e.target.value as Recurrence)}
         >
@@ -136,10 +118,10 @@ export function EventForm({ categories, mode, event }: Props) {
         </select>
       </label>
 
-      <label className="block">
-        <span className="text-xs text-muted">Remind me</span>
+      <label className="block space-y-1.5">
+        <span className="label">Remind me</span>
         <select
-          className="input mt-1"
+          className="input"
           value={reminderKey}
           onChange={(e) => setReminderKey(e.target.value)}
         >
@@ -151,33 +133,27 @@ export function EventForm({ categories, mode, event }: Props) {
         </select>
       </label>
 
-      <label className="block">
-        <span className="text-xs text-muted">Notes</span>
+      <label className="block space-y-1.5">
+        <span className="label">Notes</span>
         <textarea
-          className="input mt-1 min-h-[80px]"
+          className="input min-h-[90px] resize-none"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Policy number, account, link…"
         />
       </label>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
-
-      <div className="flex items-center justify-between gap-3 pt-2">
+      <div className="flex items-center justify-between gap-3 pt-3">
         {mode === "edit" ? (
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={submitting}
-            className="btn-ghost text-red-300 border-red-500/40"
-          >
+          <button type="button" onClick={onDelete} className="btn-danger">
+            <Trash2 size={16} />
             Delete
           </button>
         ) : (
           <span />
         )}
-        <button type="submit" disabled={submitting} className="btn-primary">
-          {submitting ? "Saving…" : mode === "create" ? "Create" : "Save"}
+        <button type="submit" className="btn-primary">
+          {mode === "create" ? "Add event" : "Save"}
         </button>
       </div>
     </form>

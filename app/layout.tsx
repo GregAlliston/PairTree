@@ -1,10 +1,16 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
+import { Inter } from "next/font/google";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Life Admin",
-  description: "Log and get reminded of your important dates.",
+  description: "Never forget an important date again.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -18,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0f14",
+  themeColor: "#0a0a0b",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -31,20 +37,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body>
-        <div className="mx-auto max-w-xl min-h-screen flex flex-col">
-          <header className="px-4 pt-6 pb-4 flex items-center justify-between">
-            <a href="/" className="text-lg font-semibold tracking-tight">
-              Life Admin
-            </a>
-            <a href="/categories" className="text-sm text-muted hover:text-text">
-              Categories
-            </a>
-          </header>
-          <main className="flex-1 px-4 pb-24">{children}</main>
+        <div className="mx-auto max-w-xl min-h-screen flex flex-col font-sans">
+          <main className="flex-1 px-5 pt-8 safe-bottom">{children}</main>
         </div>
-        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

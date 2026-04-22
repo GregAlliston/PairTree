@@ -1,29 +1,33 @@
-import { notFound } from "next/navigation";
-import { supabase, type Category, type EventRow } from "@/lib/supabase";
+"use client";
+
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
+import { useStore } from "@/lib/store";
 import { EventForm } from "@/components/EventForm";
 
-export const dynamic = "force-dynamic";
-
-export default async function EventDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const db = supabase();
-  const [{ data: event }, { data: cats }] = await Promise.all([
-    db.from("events").select("*").eq("id", id).single(),
-    db.from("categories").select("*").order("name"),
-  ]);
-  if (!event) return notFound();
+export default function EditEventPage() {
+  const params = useParams<{ id: string }>();
+  const snap = useStore();
+  if (!snap) return null;
+  const event = snap.events.find((e) => e.id === params.id);
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Edit event</h1>
-      <EventForm
-        categories={(cats ?? []) as Category[]}
-        mode="edit"
-        event={event as EventRow}
-      />
+    <div className="space-y-6 animate-fade-in">
+      <header className="flex items-center gap-2">
+        <Link
+          href="/"
+          className="text-muted hover:text-text -ml-2 p-2"
+          aria-label="Back"
+        >
+          <ChevronLeft size={20} />
+        </Link>
+        <h1 className="text-xl font-semibold">Edit event</h1>
+      </header>
+      {event ? (
+        <EventForm mode="edit" event={event} categories={snap.categories} />
+      ) : (
+        <p className="text-sm text-muted">Event not found.</p>
+      )}
     </div>
   );
 }

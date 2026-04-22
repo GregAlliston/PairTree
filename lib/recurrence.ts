@@ -1,4 +1,4 @@
-import type { Recurrence } from "./supabase";
+import type { Recurrence } from "./types";
 
 const MS_PER_DAY = 86_400_000;
 
